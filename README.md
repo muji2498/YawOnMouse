@@ -1,5 +1,10 @@
 # Yaw On Mouse Mod - Nuclear Option
 
+# Mod Origins
+
+This mod was orginally created by Haika (_haika) on the Nuclear Option discord, i set out to convert this mod into a bepinex mod. The original mod by Haika can be found here:
+https://discord.com/channels/909034158205059082/1319566766594068531/1319566766594068531
+
 ## Bepinex Version
 This mod requires bepinex version [5.4.23.2](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.2)
 
