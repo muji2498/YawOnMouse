@@ -1,4 +1,4 @@
-# Yaw On Mouse Mod
+# Yaw On Mouse Mod - Nuclear Option
 
 ## Bepinex Version
 This mod requires bepinex version [5.4.23.2](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.2)
