@@ -23,5 +23,7 @@ There are three behaviours:
 - `NoRoll` - This Disables rolling on the x-axis
 - `Yaw` - This makes the aircraft yaw on the x-axis
 
+## Building Project
+
 Change `<GameDir>YourGameDirectoryHere</GameDir>` inside GameDir.targets to the install location of your game. <br>
 Example: `<GameDir>C:\Program Files (x86)\Steam\steamapps\common\Nuclear Option</GameDir>`
