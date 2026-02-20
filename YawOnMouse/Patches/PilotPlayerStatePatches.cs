@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
+using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
-using UnityEngine;
+using YawOnMouse.Helpers;
 
 namespace YawOnMouse.Patches;
 
@@ -27,25 +26,106 @@ public class PilotPlayerStatePatches
             return codes;
         }
 
+        /*
+         * call BlacklistHelper::IsBlacklisted
+         * brfalse -> yawLabel
+         * ...
+         * stfld PilotPlayerState::rollInput
+         * br -> endLabel
+         * yawLabel:
+         *  ...
+         *  stfld PilotPlayerState::yawInput
+         * endlabel:
+         */
         static IEnumerable<CodeInstruction> Yaw(List<CodeInstruction> codes)
         {
-            /*
-             *  IL_01f5: ldc.r4       150
-                IL_01fa: div
-                IL_01fb: stfld        float32 PilotPlayerState::rollInput
-             */
             var codeMatcher = new CodeMatcher(codes)
                 .MatchForward(
-                    true, 
-                    new CodeMatch(OpCodes.Ldc_R4), 
+                    false,
+                    new CodeMatch(OpCodes.Ldarg_0),
+                    new CodeMatch(OpCodes.Ldsfld),
+                    new CodeMatch(OpCodes.Ldfld),
+                    new CodeMatch(OpCodes.Callvirt),
+                    new CodeMatch(OpCodes.Callvirt),
+                    new CodeMatch(OpCodes.Ldfld),
+                    new CodeMatch(OpCodes.Ldc_R4),
                     new CodeMatch(OpCodes.Div),
-                    new CodeMatch(OpCodes.Stfld, 
-                        AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput))
-                    )
-                )
-                .Set(OpCodes.Stfld, AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.yawInput)));
+                    new CodeMatch(OpCodes.Stfld,
+                        AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput)))
+                );
             
-            return codeMatcher.InstructionEnumeration();
+            if (codeMatcher.IsInvalid)
+            {
+                Plugin.Logger.LogError("Could not find instructions for Yaw");
+                return codes;
+            }
+
+            int rollSeqStart = codeMatcher.Pos;
+
+            // grab the entire sequence
+            codeMatcher.MatchForward(
+                true,
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(OpCodes.Ldsfld),
+                new CodeMatch(OpCodes.Ldfld),
+                new CodeMatch(OpCodes.Callvirt),
+                new CodeMatch(OpCodes.Callvirt),
+                new CodeMatch(OpCodes.Ldfld),
+                new CodeMatch(OpCodes.Ldc_R4),
+                new CodeMatch(OpCodes.Div),
+                new CodeMatch(OpCodes.Stfld,
+                    AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput)))
+            );
+
+            int rollSeqEnd = codeMatcher.Pos;
+
+            // clone the sequence
+            var rollSequence = codes.GetRange(rollSeqStart, rollSeqEnd - rollSeqStart + 1);
+            
+            var yawSequence = new List<CodeInstruction>();
+            foreach (var instruction in rollSequence)
+            {
+                if (instruction.opcode == OpCodes.Stfld && instruction.operand is FieldInfo fieldInfo &&
+                    fieldInfo.Name == nameof(PilotPlayerState.rollInput))
+                {
+                    // set this.rollInput to this.yawInput
+                    yawSequence.Add(new CodeInstruction(OpCodes.Stfld,
+                        AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.yawInput)))
+                    );
+                }
+                else
+                {
+                    yawSequence.Add(instruction.Clone());
+                }
+            }
+
+            var yawLabel = new Label();
+            var endLabel = new Label();
+            
+            // add label to yaw instructs
+            yawSequence[0].labels.Add(yawLabel);
+            
+            // add label to end nop
+            var endNop = new CodeInstruction(OpCodes.Nop);
+            endNop.labels.Add(endLabel);
+
+            // build replacement: [call IsBlacklisted, brfalse yawLabel, ...roll..., br endLabel, ...yaw..., nop]
+            var newInstructions = new List<CodeInstruction>
+            {
+                new(OpCodes.Call, AccessTools.Method(typeof(BlacklistHelper), nameof(BlacklistHelper.IsBlacklisted))),
+                new(OpCodes.Brfalse_S, yawLabel),
+            };
+
+            newInstructions.AddRange(rollSequence);
+            newInstructions.Add(new CodeInstruction(OpCodes.Br_S, endLabel));
+            newInstructions.AddRange(yawSequence);
+            newInstructions.Add(endNop);
+
+            // replace the original roll sequence with the new block
+            codes.RemoveRange(rollSeqStart, rollSeqEnd - rollSeqStart + 1);
+            codes.InsertRange(rollSeqStart, newInstructions);
+
+            return codes;
         }
 
         static IEnumerable<CodeInstruction> NoRoll(List<CodeInstruction> codes)
@@ -77,7 +157,7 @@ public class PilotPlayerStatePatches
                     );
             rollStartIndex = matcher.Pos - 1;
 
-            // Validate indices to avoid out-of-bounds access
+            // this.rollInput = 0.0
             if (pitchIndex >= 0 && rollStartIndex > pitchIndex)
             {
                 matcher

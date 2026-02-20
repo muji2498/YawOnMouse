@@ -5,7 +5,7 @@
         <TargetFramework>net472</TargetFramework>
         <AssemblyName>YawOnMouse</AssemblyName>
         <Product>YawOnMouse</Product>
-        <Version>1.0.0</Version>
+        <Version>1.1.0</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <RestoreAdditionalProjectSources>
@@ -24,7 +24,6 @@
         <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all"/>
         <PackageReference Include="BepInEx.Core" Version="5.*"/>
         <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*"/>
-        <PackageReference Include="UnityEngine.Modules" Version="5.6.0" IncludeAssets="compile"/>
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
@@ -35,8 +34,17 @@
       <Reference Include="Assembly-CSharp">
         <HintPath>$(GameDir)\NuclearOption_Data\Managed\Assembly-CSharp.dll</HintPath>
       </Reference>
+      <Reference Include="Mirage">
+        <HintPath>$(GameDir)\NuclearOption_Data\Managed\Mirage.dll</HintPath>
+      </Reference>
       <Reference Include="Rewired_Core">
         <HintPath>$(GameDir)\NuclearOption_Data\Managed\Rewired_Core.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine">
+        <HintPath>$(GameDir)\NuclearOption_Data\Managed\UnityEngine.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.CoreModule">
+        <HintPath>$(GameDir)\NuclearOption_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       </Reference>
     </ItemGroup>
 
