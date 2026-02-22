@@ -39,20 +39,8 @@ public class PilotPlayerStatePatches
          */
         static IEnumerable<CodeInstruction> Yaw(List<CodeInstruction> codes)
         {
-            var codeMatcher = new CodeMatcher(codes)
-                .MatchForward(
-                    false,
-                    new CodeMatch(OpCodes.Ldarg_0),
-                    new CodeMatch(OpCodes.Ldsfld),
-                    new CodeMatch(OpCodes.Ldfld),
-                    new CodeMatch(OpCodes.Callvirt),
-                    new CodeMatch(OpCodes.Callvirt),
-                    new CodeMatch(OpCodes.Ldfld),
-                    new CodeMatch(OpCodes.Ldc_R4),
-                    new CodeMatch(OpCodes.Div),
-                    new CodeMatch(OpCodes.Stfld,
-                        AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput)))
-                );
+            var codeMatcher = new CodeMatcher(codes);
+            MatchRollInputInstruction(codeMatcher, false);
             
             if (codeMatcher.IsInvalid)
             {
@@ -63,19 +51,7 @@ public class PilotPlayerStatePatches
             int rollSeqStart = codeMatcher.Pos;
 
             // grab the entire sequence
-            codeMatcher.MatchForward(
-                true,
-                new CodeMatch(OpCodes.Ldarg_0),
-                new CodeMatch(OpCodes.Ldsfld),
-                new CodeMatch(OpCodes.Ldfld),
-                new CodeMatch(OpCodes.Callvirt),
-                new CodeMatch(OpCodes.Callvirt),
-                new CodeMatch(OpCodes.Ldfld),
-                new CodeMatch(OpCodes.Ldc_R4),
-                new CodeMatch(OpCodes.Div),
-                new CodeMatch(OpCodes.Stfld,
-                    AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput)))
-            );
+            MatchRollInputInstruction(codeMatcher, true);
 
             int rollSeqEnd = codeMatcher.Pos;
 
@@ -126,6 +102,23 @@ public class PilotPlayerStatePatches
             codes.InsertRange(rollSeqStart, newInstructions);
 
             return codes;
+        }
+
+        private static void MatchRollInputInstruction(CodeMatcher codeMatcher, bool useEnd)
+        {
+            codeMatcher.MatchForward(
+                useEnd,
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(OpCodes.Ldsfld),
+                new CodeMatch(OpCodes.Ldfld),
+                new CodeMatch(OpCodes.Callvirt),
+                new CodeMatch(OpCodes.Callvirt),
+                new CodeMatch(OpCodes.Ldfld),
+                new CodeMatch(OpCodes.Ldc_R4),
+                new CodeMatch(OpCodes.Div),
+                new CodeMatch(OpCodes.Stfld,
+                    AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput)))
+            );
         }
 
         static IEnumerable<CodeInstruction> NoRoll(List<CodeInstruction> codes)
