@@ -19,8 +19,8 @@ public class Plugin : BaseUnityPlugin
     internal static new ManualLogSource Logger;
     public static ConfigEntry<bool> Enabled;
     public static ConfigEntry<AxisPatchType> AxisPatchType;
-    public static ConfigEntry<bool> UseCraftBlackList;
-    public BlacklistConfigManager BlacklistConfigManager;
+    public static ConfigEntry<bool> UseCraftWhitelist;
+    public WhitelistConfigManager WhitelistConfigManager;
     public static Plugin Instance;
     
     private bool _scanComplete = false;
@@ -29,7 +29,7 @@ public class Plugin : BaseUnityPlugin
     {
         Logger = base.Logger;
         Instance = this;
-        BlacklistConfigManager = new BlacklistConfigManager();
+        WhitelistConfigManager = new WhitelistConfigManager();
 
         Enabled = Config.Bind(
             "Config",
@@ -42,11 +42,11 @@ public class Plugin : BaseUnityPlugin
             YawOnMouse.AxisPatchType.Yaw,
             "What you want the patch to do on the x-axis (can only be changed before startup not at runtime.)"
         );
-        UseCraftBlackList = Config.Bind(
+        UseCraftWhitelist = Config.Bind(
             "Config",
-            "UseCraftBlackList",
+            "UseCraftWhitelist",
             false,
-            "When enabled the mod will not work if you are in the crafts specified in the blacklist"
+            "When enabled the mod will only work on the aircraft specified in the whitelist"
             );
 
         // Plugin startup logic
@@ -61,7 +61,7 @@ public class Plugin : BaseUnityPlugin
         // really dirty ik, but only runs when plugin is first ran
         if (!_scanComplete)
         {
-            _scanComplete = BlacklistConfigManager.TryScanForAircraft();
+            _scanComplete = WhitelistConfigManager.TryScanForAircraft();
         }
     }
 }

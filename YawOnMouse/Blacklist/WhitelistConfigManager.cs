@@ -6,14 +6,14 @@ using Rewired.Utils.Libraries.TinyJson;
 
 namespace YawOnMouse.Blacklist;
 
-public class BlacklistConfigManager
+public class WhitelistConfigManager
 {
-    private readonly string _blacklistConfigPath;
-    public BlacklistConfig Config { get; private set; }
+    private readonly string _whitelistConfigPath;
+    public WhitelistConfig Config { get; private set; }
 
-    public BlacklistConfigManager()
+    public WhitelistConfigManager()
     {
-        _blacklistConfigPath = Path.Combine(Paths.ConfigPath, "AircraftBlacklistConfig.json");
+        _whitelistConfigPath = Path.Combine(Paths.ConfigPath, "AircraftWhitelistConfig.json");
         LoadOrCreateConfig();
     }
 
@@ -28,9 +28,9 @@ public class BlacklistConfigManager
         {
             var name = aircraft.gameObject.name.Replace("(Clone)", "").Trim();
 
-            if (!Config.Blacklist.ContainsKey(name))
+            if (!Config.Whitelist.ContainsKey(name))
             {
-                Config.Blacklist.Add(name, false);
+                Config.Whitelist.Add(name, false);
                 Plugin.Logger.LogInfo($"Discovered {name}");
                 dirty = true;
             }
@@ -42,18 +42,18 @@ public class BlacklistConfigManager
 
     private void LoadOrCreateConfig()
     {
-        if (!File.Exists(_blacklistConfigPath))
+        if (!File.Exists(_whitelistConfigPath))
         {
             Config = GenerateDefaultConfig();
             SaveConfig();
-            Plugin.Logger.LogInfo($"Config file {_blacklistConfigPath} has been created!");
+            Plugin.Logger.LogInfo($"Config file {_whitelistConfigPath} has been created!");
         }
         else
         {
             try
             {
-                var json = File.ReadAllText(_blacklistConfigPath);
-                Config = JsonParser.FromJson<BlacklistConfig>(json);
+                var json = File.ReadAllText(_whitelistConfigPath);
+                Config = JsonParser.FromJson<WhitelistConfig>(json);
                 Plugin.Logger.LogInfo("permission config loaded.");
             }
             catch (Exception e)
@@ -70,7 +70,7 @@ public class BlacklistConfigManager
         try
         {
             var json = JsonWriter.ToJson(Config);
-            File.WriteAllText(_blacklistConfigPath, json);
+            File.WriteAllText(_whitelistConfigPath, json);
             Plugin.Logger.LogInfo("permission config saved.");
         }
         catch (Exception e)
@@ -79,11 +79,11 @@ public class BlacklistConfigManager
         }   
     }
 
-    private BlacklistConfig GenerateDefaultConfig()
+    private WhitelistConfig GenerateDefaultConfig()
     {
-        return new BlacklistConfig
+        return new WhitelistConfig
         {
-            Blacklist = new Dictionary<string, bool>()
+            Whitelist = new Dictionary<string, bool>()
             // {
             //     ["CAS1"] = false, // brawler
             //     ["Darkreach"] = false, // darkreach

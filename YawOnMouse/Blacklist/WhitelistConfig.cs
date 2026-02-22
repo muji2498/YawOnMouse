@@ -2,13 +2,13 @@
 
 namespace YawOnMouse.Blacklist;
 
-public class BlacklistConfig
+public class WhitelistConfig
 {
-    public Dictionary<string, bool> Blacklist = new();
+    public Dictionary<string, bool> Whitelist = new();
 
     public bool Enabled(string name)
     {
-        foreach (var entry in Blacklist)
+        foreach (var entry in Whitelist)
         {
             // allows for partial match "COIN (Clone)"
             if (name.Contains(entry.Key) && entry.Value) return true;
@@ -18,11 +18,11 @@ public class BlacklistConfig
 
     public void Add(string name, bool enabled)
     {
-        Blacklist.Add(name, enabled);
+        Whitelist.Add(name, enabled);
     }
 
     public void Remove(string name)
     {
-        Blacklist.Remove(name);
+        Whitelist.Remove(name);
     }
 }
