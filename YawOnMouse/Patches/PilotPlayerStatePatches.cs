@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
@@ -11,7 +12,7 @@ public class PilotPlayerStatePatches
     [HarmonyPatch(typeof(PilotPlayerState), "PlayerAxisControls")]
     static class PlayerAxisControls
     {
-        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
         {
             if (!Plugin.Enabled.Value) return instructions;
             
@@ -21,14 +22,14 @@ public class PilotPlayerStatePatches
             var codes = new List<CodeInstruction>(instructions);
 
             if (Plugin.AxisPatchType.Value == AxisPatchType.NoRoll) return NoRoll(codes);
-            if (Plugin.AxisPatchType.Value == AxisPatchType.Yaw) return Yaw(codes);
+            if (Plugin.AxisPatchType.Value == AxisPatchType.Yaw) return Yaw(codes, il);
             
             return codes;
         }
 
         /*
-         * call BlacklistHelper::IsBlacklisted
-         * brfalse -> yawLabel
+         * call WhitelistHelper::IsWhitelisted
+         * brtrue -> yawLabel
          * ...
          * stfld PilotPlayerState::rollInput
          * br -> endLabel
@@ -37,7 +38,7 @@ public class PilotPlayerStatePatches
          *  stfld PilotPlayerState::yawInput
          * endlabel:
          */
-        static IEnumerable<CodeInstruction> Yaw(List<CodeInstruction> codes)
+        static IEnumerable<CodeInstruction> Yaw(List<CodeInstruction> codes, ILGenerator il)
         {
             var codeMatcher = new CodeMatcher(codes);
             MatchRollInputInstruction(codeMatcher, false);
@@ -49,12 +50,12 @@ public class PilotPlayerStatePatches
             }
 
             int rollSeqStart = codeMatcher.Pos;
-
+            var entryLabels = new List<Label>(codes[rollSeqStart].labels); // snapshot before removal
+            
             // grab the entire sequence
             MatchRollInputInstruction(codeMatcher, true);
-
             int rollSeqEnd = codeMatcher.Pos;
-
+            
             // clone the sequence
             var rollSequence = codes.GetRange(rollSeqStart, rollSeqEnd - rollSeqStart + 1);
             
@@ -75,8 +76,8 @@ public class PilotPlayerStatePatches
                 }
             }
 
-            var yawLabel = new Label();
-            var endLabel = new Label();
+            var yawLabel = il.DefineLabel();
+            var endLabel = il.DefineLabel();
             
             // add label to yaw instructs
             yawSequence[0].labels.Add(yawLabel);
@@ -84,14 +85,16 @@ public class PilotPlayerStatePatches
             // add label to end nop
             var endNop = new CodeInstruction(OpCodes.Nop);
             endNop.labels.Add(endLabel);
-
-            // build replacement: [call IsBlacklisted, brfalse yawLabel, ...roll..., br endLabel, ...yaw..., nop]
+            
+            // build replacement: [call IsWhitelisted, brtrue yawLabel, ...roll..., br endLabel, ...yaw..., nop]
             var newInstructions = new List<CodeInstruction>
             {
-                new(OpCodes.Call, AccessTools.Method(typeof(BlacklistHelper), nameof(BlacklistHelper.IsBlacklisted))),
-                new(OpCodes.Brfalse_S, yawLabel),
+                new(OpCodes.Call, AccessTools.Method(typeof(WhitelistHelper), nameof(WhitelistHelper.IsWhitelisted))),
+                new(OpCodes.Brtrue_S, yawLabel),
             };
-
+            
+            newInstructions[0].labels.AddRange(entryLabels);
+            
             newInstructions.AddRange(rollSequence);
             newInstructions.Add(new CodeInstruction(OpCodes.Br_S, endLabel));
             newInstructions.AddRange(yawSequence);
@@ -100,7 +103,7 @@ public class PilotPlayerStatePatches
             // replace the original roll sequence with the new block
             codes.RemoveRange(rollSeqStart, rollSeqEnd - rollSeqStart + 1);
             codes.InsertRange(rollSeqStart, newInstructions);
-
+            
             return codes;
         }
 
