@@ -4,7 +4,7 @@ public static class WhitelistHelper
 {
     public static bool IsWhitelisted()
     {
-        if (!Plugin.UseCraftWhitelist.Value) return false;
+        if (!Plugin.UseCraftWhitelist.Value) return true;
 
         if (!GameManager.GetLocalAircraft(out Aircraft aircraft)) return false; 
         
