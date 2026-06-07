@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
@@ -14,21 +13,17 @@ public class PilotPlayerStatePatches
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
         {
-            if (!Plugin.Enabled.Value) return instructions;
-            
-            // default game behaviour is roll
-            if (Plugin.AxisPatchType.Value == AxisPatchType.Roll) return instructions;
-            
             var codes = new List<CodeInstruction>(instructions);
 
-            if (Plugin.AxisPatchType.Value == AxisPatchType.NoRoll) return NoRoll(codes);
+            // default game behaviour is roll (no patch needed)
+            if (Plugin.AxisPatchType.Value == AxisPatchType.Roll) return instructions;
             if (Plugin.AxisPatchType.Value == AxisPatchType.Yaw) return Yaw(codes, il);
             
             return codes;
         }
 
         /*
-         * call WhitelistHelper::IsWhitelisted
+         * call PatchHelper::ShouldUseYaw
          * brtrue -> yawLabel
          * ...
          * stfld PilotPlayerState::rollInput
@@ -86,10 +81,10 @@ public class PilotPlayerStatePatches
             var endNop = new CodeInstruction(OpCodes.Nop);
             endNop.labels.Add(endLabel);
             
-            // build replacement: [call IsWhitelisted, brtrue yawLabel, ...roll..., br endLabel, ...yaw..., nop]
+            // build replacement: [call ShouldUseYaw, brtrue yawLabel, ...roll..., br endLabel, ...yaw..., nop]
             var newInstructions = new List<CodeInstruction>
             {
-                new(OpCodes.Call, AccessTools.Method(typeof(WhitelistHelper), nameof(WhitelistHelper.IsWhitelisted))),
+                new(OpCodes.Call, AccessTools.Method(typeof(PatchHelper), nameof(PatchHelper.ShouldUseYaw))),
                 new(OpCodes.Brtrue_S, yawLabel),
             };
             
@@ -122,51 +117,6 @@ public class PilotPlayerStatePatches
                 new CodeMatch(OpCodes.Stfld,
                     AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput)))
             );
-        }
-
-        static IEnumerable<CodeInstruction> NoRoll(List<CodeInstruction> codes)
-        {
-            int pitchIndex = 0; // To store the index of pitchInput's stfld
-            int rollStartIndex = 0; // To store the starting index of rollInput's sequence
-
-            var matcher = new CodeMatcher(codes);
-
-            matcher
-                .MatchForward(
-                    true, 
-                    new CodeMatch(OpCodes.Ldc_R4), 
-                    new CodeMatch(OpCodes.Div), 
-                    new CodeMatch(OpCodes.Stfld, 
-                        AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.pitchInput))
-                        )
-                    );
-            pitchIndex = matcher.Pos;
-            
-            matcher
-                .MatchForward(
-                    true, 
-                    new CodeMatch(OpCodes.Ldc_R4), 
-                    new CodeMatch(OpCodes.Div), 
-                    new CodeMatch(OpCodes.Stfld,
-                        AccessTools.Field(typeof(PilotPlayerState), nameof(PilotPlayerState.rollInput))
-                        )
-                    );
-            rollStartIndex = matcher.Pos - 1;
-
-            // this.rollInput = 0.0
-            if (pitchIndex >= 0 && rollStartIndex > pitchIndex)
-            {
-                matcher
-                    .Start()
-                    .Advance(pitchIndex + 1)
-                    .RemoveInstructions(rollStartIndex - pitchIndex)
-                    .Insert(
-                        new CodeInstruction(OpCodes.Ldarg_0),
-                        new CodeInstruction(OpCodes.Ldc_R4, 0.0f)
-                    );
-            }
-
-            return matcher.InstructionEnumeration();
         }
     }
 }

@@ -2,6 +2,7 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using UnityEngine;
 using YawOnMouse.Blacklist;
 
 namespace YawOnMouse;
@@ -10,7 +11,7 @@ public static class PluginInfo
 {
     public const string PLUGIN_GUID = "YawOnMouse";
     public const string PLUGIN_NAME = "YawOnMouse";
-    public const string PLUGIN_VERSION = "1.1.1";
+    public const string PLUGIN_VERSION = "2.0.0";
 }
 
 [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
@@ -20,6 +21,7 @@ public class Plugin : BaseUnityPlugin
     public static ConfigEntry<bool> Enabled;
     public static ConfigEntry<AxisPatchType> AxisPatchType;
     public static ConfigEntry<bool> UseCraftWhitelist;
+    public static ConfigEntry<KeyboardShortcut> ToggleKey;
     public WhitelistConfigManager WhitelistConfigManager;
     public static Plugin Instance;
     
@@ -35,7 +37,7 @@ public class Plugin : BaseUnityPlugin
             "Config",
             "PlayerAxisControls_Patch",
             true,
-            "Enable/Disable controller roll input patch (can only be changed before startup not at runtime.)");
+            "Enable/Disable controller roll input patch");
         AxisPatchType = Config.Bind(
             "Config",
             "AxisPatchType",
@@ -48,6 +50,12 @@ public class Plugin : BaseUnityPlugin
             false,
             "When enabled the mod will only work on the aircraft specified in the whitelist"
             );
+        ToggleKey = Config.Bind(
+            "Config",
+            "ToggleKey",
+            new KeyboardShortcut(KeyCode.Y, KeyCode.LeftAlt),
+            "When this keyboard shortcut is pressed the plugin will toggle itself on and off"
+        );
 
         // Plugin startup logic
         Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
@@ -58,6 +66,15 @@ public class Plugin : BaseUnityPlugin
 
     private void Update()
     {
+        if (ToggleKey.Value.IsDown())
+        {
+            Enabled.Value = !Enabled.Value;
+            Config.Save();
+#if DEBUG
+            Logger.LogInfo($"Plugin toggled: {(Enabled.Value ? "Enabled" : "Disabled")}");
+#endif
+        }
+        
         // really dirty ik, but only runs when plugin is first ran
         if (!_scanComplete)
         {
