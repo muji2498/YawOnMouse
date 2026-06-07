@@ -18,9 +18,8 @@ When the mod is first applied this will default to `true`
 `AxisPatchType` - This Config chooses what type of behaviour the x-axis should do. <br>
 When the mod is first applied this will default to `Yaw`
 
-`ToggleKey` - This Config will set the key that will toggle the behaviour of the x-axis. <br>
-When the mod is first applied this will default to `Y + LeftAlt`<br>
-the behaviour of this config is "Main Key + Modifier Key", so for example "X + AltGr" is valid.
+In `Flight Controls` you can find the `Yaw On Mouse Toggle`, which allows you to set a keybind <br>
+that toggles the yaw on mouse behaviour.
 
 <br>
 There are two behaviours:
